@@ -61,10 +61,13 @@ public class SkyWalkingAgent {
 
     /**
      * Main entrance. Use byte-buddy transform to enhance all classes, which define in plugins.
+     * -javaagent:/path/to/agent.jar=agentArgs
+     * -javaagent:/path/to/agent.jar=p1=k1,p2=k2...
      */
     public static void premain(String agentArgs, Instrumentation instrumentation) throws PluginException {
         final PluginFinder pluginFinder;
         try {
+            // 1.初始化配置
             SnifferConfigInitializer.initializeCoreConfig(agentArgs);
         } catch (Exception e) {
             // try to resolve a new logger, and use the new logger to write the error log here
@@ -77,6 +80,7 @@ public class SkyWalkingAgent {
         }
 
         try {
+            // 2.加载插件
             pluginFinder = new PluginFinder(new PluginBootstrap().loadPlugins());
         } catch (AgentPackageNotFoundException ape) {
             LOGGER.error(ape, "Locate agent.jar failure. Shutting down.");
@@ -88,6 +92,7 @@ public class SkyWalkingAgent {
 
         final ByteBuddy byteBuddy = new ByteBuddy().with(TypeValidation.of(Config.Agent.IS_OPEN_DEBUGGING_CLASS));
 
+        // region 3.定制化 Agent 行为
         AgentBuilder agentBuilder = new AgentBuilder.Default(byteBuddy).ignore(
                 nameStartsWith("net.bytebuddy.")
                         .or(nameStartsWith("org.slf4j."))
@@ -130,12 +135,16 @@ public class SkyWalkingAgent {
                     .with(new Listener())
                     .installOn(instrumentation);
 
+        // endregion
+
         try {
+            // 4. 启动服务
             ServiceManager.INSTANCE.boot();
         } catch (Exception e) {
             LOGGER.error(e, "Skywalking agent boot failure.");
         }
 
+        // 5. 注册「关闭钩子」
         Runtime.getRuntime()
                 .addShutdownHook(new Thread(ServiceManager.INSTANCE::shutdown, "skywalking service shutdown thread"));
     }
