@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
+
 import lombok.RequiredArgsConstructor;
 import org.apache.skywalking.apm.agent.core.boot.AgentPackageNotFoundException;
 import org.apache.skywalking.apm.agent.core.boot.AgentPackagePath;
@@ -43,12 +44,16 @@ import org.apache.skywalking.apm.agent.core.plugin.PluginBootstrap;
 
 /**
  * The <code>AgentClassLoader</code> represents a classloader, which is in charge of finding plugins and interceptors.
+ * <p>
+ * 负责查找插件和拦截器的类加载器
  */
 public class AgentClassLoader extends ClassLoader {
 
     static {
         /*
          * Try to solve the classloader dead lock. See https://github.com/apache/skywalking/pull/2016
+         *
+         * 开启类加载器的并行加载模式
          */
         registerAsParallelCapable();
     }
@@ -73,24 +78,36 @@ public class AgentClassLoader extends ClassLoader {
      * @throws AgentPackageNotFoundException if agent package is not found.
      */
     public static void initDefaultLoader() throws AgentPackageNotFoundException {
+        // 双重检查锁，确保 DEFAULT_LOADER 为空
         if (DEFAULT_LOADER == null) {
             synchronized (AgentClassLoader.class) {
                 if (DEFAULT_LOADER == null) {
+                    // 创建一个类加载器必然要指定上级类加载器。为什么此处使用加载 PluginBootstrap 的类加载器作为 DEFAULT_LOADER 的父级类加载器呢？
+                    // 其实很简单，因为观察调用此方法的时机，会发现是在 PluginBootstrap 内部的方法中调用的，那么此时 PluginBootstrap 必然已经加载完成了，所以使用他的类加载器作为父级类加载器。
                     DEFAULT_LOADER = new AgentClassLoader(PluginBootstrap.class.getClassLoader());
                 }
             }
         }
     }
 
+    /**
+     * 将指定的自定义插件目录，添加进 classpath
+     *
+     * @param parent 父级类加载器
+     * @throws AgentPackageNotFoundException 目录找不到异常
+     */
     public AgentClassLoader(ClassLoader parent) throws AgentPackageNotFoundException {
         super(parent);
+        // 获取
         File agentDictionary = AgentPackagePath.getPath();
         classpath = new LinkedList<>();
+        // 将 plugin.mount 配置指定的目录全部添加进 classpath
         Config.Plugin.MOUNT.forEach(mountFolder -> classpath.add(new File(agentDictionary, mountFolder)));
     }
 
     @Override
     protected Class<?> findClass(String name) throws ClassNotFoundException {
+        // 加载目录下所有 jar 包
         List<Jar> allJars = getAllJars();
         String path = name.replace('.', '/').concat(".class");
         for (Jar jar : allJars) {
@@ -102,13 +119,15 @@ public class AgentClassLoader extends ClassLoader {
                 URL classFileUrl = new URL("jar:file:" + jar.sourceFile.getAbsolutePath() + "!/" + path);
                 byte[] data;
                 try (final BufferedInputStream is = new BufferedInputStream(
-                    classFileUrl.openStream()); final ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+                        classFileUrl.openStream()); final ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
                     int ch;
                     while ((ch = is.read()) != -1) {
                         baos.write(ch);
                     }
                     data = baos.toByteArray();
                 }
+                // defineClass 方法会返回类定义
+                // processLoadedClass 会再次处理返回的类定义。为什么？加载配置并拷贝，让配置更加靠近使用方，优雅！
                 return processLoadedClass(defineClass(name, data, 0, data.length));
             } catch (IOException e) {
                 LOGGER.error(e, "find class fail.");
@@ -157,12 +176,19 @@ public class AgentClassLoader extends ClassLoader {
         };
     }
 
+    /**
+     * 处理查找到的类 (拷贝配置，让配置更加靠近使用方)
+     *
+     * @param loadedClass 找到的类
+     * @return 类
+     */
     private Class<?> processLoadedClass(Class<?> loadedClass) {
         final PluginConfig pluginConfig = loadedClass.getAnnotation(PluginConfig.class);
         if (pluginConfig != null) {
             // Set up the plugin config when loaded by class loader at the first time.
             // Agent class loader just loaded limited classes in the plugin jar(s), so the cost of this
             // isAssignableFrom would be also very limited.
+            // 初始化 Agent 配置 (将 agent 的配置拷贝进插件带有 PluginConfig 注解的同名属性中)
             SnifferConfigInitializer.initializeConfig(pluginConfig.root());
         }
 
@@ -206,7 +232,9 @@ public class AgentClassLoader extends ClassLoader {
 
     @RequiredArgsConstructor
     private static class Jar {
+        // jar 文件表示
         private final JarFile jarFile;
+        // 纯文件表示
         private final File sourceFile;
     }
 }

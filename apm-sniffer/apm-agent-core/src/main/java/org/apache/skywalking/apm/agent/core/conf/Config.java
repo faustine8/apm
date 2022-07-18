@@ -318,6 +318,8 @@ public class Config {
 
         /**
          * Mount the folders of the plugins. The folder path is relative to agent.jar.
+         *
+         * 将哪些目录作为自定义插件的目录
          */
         public static List<String> MOUNT = Arrays.asList("plugins", "activations");
     }

@@ -137,6 +137,7 @@ public class SnifferConfigInitializer {
             return;
         }
         try {
+            // 本质就是将 AGENT_SETTINGS 配置中的同名参数拷贝到 configClass 中
             ConfigInitializer.initialize(AGENT_SETTINGS, configClass);
         } catch (IllegalAccessException e) {
             LOGGER.error(e,

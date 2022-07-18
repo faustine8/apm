@@ -74,6 +74,8 @@ public class SkyWalkingAgent {
             SnifferConfigInitializer.initializeCoreConfig(agentArgs);
         } catch (Exception e) {
             // try to resolve a new logger, and use the new logger to write the error log here
+            // 此处之所以重新获取 Logger, 是因为在初始化配置的过程中，只有在重新设置了 Logger 之后才会抛除异常。
+            // 而这时如果抛除了异常，此时重新获取，会使用配置文件中配置的 LogResolver 记录初始化配置抛出的异常。
             LogManager.getLogger(SkyWalkingAgent.class)
                     .error(e, "SkyWalking agent initialized failure. Shutting down.");
             return;
