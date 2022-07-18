@@ -62,10 +62,13 @@ public class SnifferConfigInitializer {
      */
     public static void initializeCoreConfig(String agentOptions) {
         AGENT_SETTINGS = new Properties();
+        // 将配置文件加载成输入流
         try (final InputStreamReader configFileStream = loadConfig()) {
+            // 加载进 properties 中
             AGENT_SETTINGS.load(configFileStream);
             for (String key : AGENT_SETTINGS.stringPropertyNames()) {
                 String value = (String) AGENT_SETTINGS.get(key);
+                // 替换配置文件中的配置项的占位符
                 AGENT_SETTINGS.put(key, PropertyPlaceholderHelper.INSTANCE.replacePlaceholders(value, AGENT_SETTINGS));
             }
 
@@ -74,34 +77,43 @@ public class SnifferConfigInitializer {
         }
 
         try {
+            // 用环境变量中的值，替换配置文件中配置的值
+            // 环境变量中的配置必须以 skywalking 开头
             overrideConfigBySystemProp();
         } catch (Exception e) {
             LOGGER.error(e, "Failed to read the system properties.");
         }
 
+        // 解析 agent 参数
         agentOptions = StringUtil.trim(agentOptions, ',');
         if (!StringUtil.isEmpty(agentOptions)) {
             try {
                 agentOptions = agentOptions.trim();
                 LOGGER.info("Agent options is {}.", agentOptions);
 
+                // 使用 agent 参数替换配置文件中配置的值
                 overrideConfigByAgentOptions(agentOptions);
             } catch (Exception e) {
                 LOGGER.error(e, "Failed to parse the agent options, val is {}.", agentOptions);
             }
         }
 
+        // 将 Properties 中的配置项赋值到 Config 类中
         initializeConfig(Config.class);
         // reconfigure logger after config initialization
+        // 配置日志
         configureLogger();
         LOGGER = LogManager.getLogger(SnifferConfigInitializer.class);
 
+        // 检查 service_name
         if (StringUtil.isEmpty(Config.Agent.SERVICE_NAME)) {
             throw new ExceptionInInitializerError("`agent.service_name` is missing.");
         }
+        // 检查 oap server 地址
         if (StringUtil.isEmpty(Config.Collector.BACKEND_SERVICE)) {
             throw new ExceptionInInitializerError("`collector.backend_service` is missing.");
         }
+        // 容错。如果 Peer 的长度配置短于 3， 则默认使用 200 作为长度。 // Peer 可以理解为记录调用的地址。
         if (Config.Plugin.PEER_MAX_LENGTH <= 3) {
             LOGGER.warn(
                 "PEER_MAX_LENGTH configuration:{} error, the default value of 200 will be used.",
@@ -110,6 +122,7 @@ public class SnifferConfigInitializer {
             Config.Plugin.PEER_MAX_LENGTH = 200;
         }
 
+        // 标识配置加载完成
         IS_INIT_COMPLETED = true;
     }
 
@@ -197,9 +210,13 @@ public class SnifferConfigInitializer {
      * @return the config file {@link InputStream}, or null if not needEnhance.
      */
     private static InputStreamReader loadConfig() throws AgentPackageNotFoundException, ConfigNotFoundException {
+        // 如果系统参数指定了 skywalking_config 环境变量就读这个配置文件的值，否则就加载默认路径下的配置文件
         String specifiedConfigPath = System.getProperty(SPECIFIED_CONFIG_PATH);
+        // 找到 skywalking agent 的配置文件
         File configFile = StringUtil.isEmpty(specifiedConfigPath) ? new File(
             AgentPackagePath.getPath(), DEFAULT_CONFIG_FILE_NAME) : new File(specifiedConfigPath);
+        // AgentPackagePath.getPath() 用于定位 skywalking-agent.jar 文件所在的位置
+        // (以此文件作为参照，可以相对定位找到整个 agent 包的所有文件所在的位置)
 
         if (configFile.exists() && configFile.isFile()) {
             try {

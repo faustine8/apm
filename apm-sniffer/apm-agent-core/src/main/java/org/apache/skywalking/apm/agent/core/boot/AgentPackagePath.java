@@ -47,8 +47,10 @@ public class AgentPackagePath {
     }
 
     private static File findPath() throws AgentPackageNotFoundException {
+        // 将当前「类」的「包」还原成「路径」
         String classResourcePath = AgentPackagePath.class.getName().replaceAll("\\.", "/") + ".class";
 
+        // AgentPackagePath 一般情况下是由 AppClassLoader 加载 (AppClassLoader 负责加载classpath中指定的jar包及目录中class)
         URL resource = ClassLoader.getSystemClassLoader().getResource(classResourcePath);
         if (resource != null) {
             String urlString = resource.toString();
@@ -58,6 +60,7 @@ public class AgentPackagePath {
             int insidePathIndex = urlString.indexOf('!');
             boolean isInJar = insidePathIndex > -1;
 
+            // 通过字符串操作，返回 skywalking agent 包的根目录
             if (isInJar) {
                 urlString = urlString.substring(urlString.indexOf("file:"), insidePathIndex);
                 File agentJarFile = null;

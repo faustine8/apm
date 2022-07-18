@@ -63,6 +63,9 @@ public class SkyWalkingAgent {
      * Main entrance. Use byte-buddy transform to enhance all classes, which define in plugins.
      * -javaagent:/path/to/agent.jar=agentArgs
      * -javaagent:/path/to/agent.jar=p1=k1,p2=k2...
+     * 等号后面都是参数体，也就是 agentArgs
+     *
+     * 注意：-javaagent 参数必须要在 -jar 参数之前才能生效
      */
     public static void premain(String agentArgs, Instrumentation instrumentation) throws PluginException {
         final PluginFinder pluginFinder;
