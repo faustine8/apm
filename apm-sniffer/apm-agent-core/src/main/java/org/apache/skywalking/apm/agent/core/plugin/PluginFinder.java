@@ -40,11 +40,19 @@ import static net.bytebuddy.matcher.ElementMatchers.not;
  * AbstractClassEnhancePluginDefine} list.
  */
 public class PluginFinder {
+    /**
+     * 什么这里 Map 的泛型是 <String, List> 呢？
+     * 因为针对同一个类，可能有多个插件都要对他进行字节码增强。
+     * <p>
+     * key => 目标类
+     * value => 所有需要对这个目标类生效的插件
+     */
     private final Map<String, LinkedList<AbstractClassEnhancePluginDefine>> nameMatchDefine = new HashMap<String, LinkedList<AbstractClassEnhancePluginDefine>>();
     private final List<AbstractClassEnhancePluginDefine> signatureMatchDefine = new ArrayList<AbstractClassEnhancePluginDefine>();
     private final List<AbstractClassEnhancePluginDefine> bootstrapClassMatchDefine = new ArrayList<AbstractClassEnhancePluginDefine>();
 
     public PluginFinder(List<AbstractClassEnhancePluginDefine> plugins) {
+        // 遍历加载的所有插件定义
         for (AbstractClassEnhancePluginDefine plugin : plugins) {
             ClassMatch match = plugin.enhanceClass();
 
@@ -52,6 +60,9 @@ public class PluginFinder {
                 continue;
             }
 
+            // 通过条件分支语句，将不同类型了 ClassMatch 放入不同的 Map 集合中
+
+            // 如果是类名匹配器，就直接放入 nameMatchDefine 这个 map 中
             if (match instanceof NameMatch) {
                 NameMatch nameMatch = (NameMatch) match;
                 LinkedList<AbstractClassEnhancePluginDefine> pluginDefines = nameMatchDefine.get(nameMatch.getClassName());
@@ -64,19 +75,30 @@ public class PluginFinder {
                 signatureMatchDefine.add(plugin);
             }
 
+            // 对 JDK 类库进行增强的插件
             if (plugin.isBootstrapInstrumentation()) {
                 bootstrapClassMatchDefine.add(plugin);
             }
         }
     }
 
+    /**
+     * 查找针传入的类的所有的插件
+     *  1.从命名插件里面找
+     *  2.从间接匹配插件里面找
+     *
+     * @param typeDescription 相当于Class
+     * @return 对当前类生效的所有插件
+     */
     public List<AbstractClassEnhancePluginDefine> find(TypeDescription typeDescription) {
         List<AbstractClassEnhancePluginDefine> matchedPlugins = new LinkedList<AbstractClassEnhancePluginDefine>();
+        // 1.找到根据类名匹配的所有插件
         String typeName = typeDescription.getTypeName();
         if (nameMatchDefine.containsKey(typeName)) {
             matchedPlugins.addAll(nameMatchDefine.get(typeName));
         }
 
+        // 2.找到间接匹配的所有插件
         for (AbstractClassEnhancePluginDefine pluginDefine : signatureMatchDefine) {
             IndirectMatch match = (IndirectMatch) pluginDefine.enhanceClass();
             if (match.isMatch(typeDescription)) {
@@ -87,6 +109,10 @@ public class PluginFinder {
         return matchedPlugins;
     }
 
+    /**
+     * 连接匹配条件；Byte-buddy 以此条件为依据，去拦截 Class 对他进行增强
+     * @return
+     */
     public ElementMatcher<? super TypeDescription> buildMatch() {
         ElementMatcher.Junction judge = new AbstractJunction<NamedElement>() {
             @Override
@@ -94,13 +120,14 @@ public class PluginFinder {
                 return nameMatchDefine.containsKey(target.getActualName());
             }
         };
-        judge = judge.and(not(isInterface()));
+        judge = judge.and(not(isInterface())); // 不能是接口，因为接口没有实现，不能改字节码。
         for (AbstractClassEnhancePluginDefine define : signatureMatchDefine) {
             ClassMatch match = define.enhanceClass();
             if (match instanceof IndirectMatch) {
-                judge = judge.or(((IndirectMatch) match).buildJunction());
+                judge = judge.or(((IndirectMatch) match).buildJunction()); // 间接匹配使用 or 连接
             }
         }
+        // ProtectiveShieldMatcher 包装了一层，主要作用是解决兼容性问题。
         return new ProtectiveShieldMatcher(judge);
     }
 

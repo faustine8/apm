@@ -318,7 +318,7 @@ public enum CustomizeConfiguration {
      *
      * @return all the custom instrumentation.
      */
-    public Set<String> getInstrumentations() {
+    public Set<String>  getInstrumentations() {
         HashMap<String, ElementMatcher> enhanceClasses = getEnhanceClasses();
         return enhanceClasses.keySet();
     }

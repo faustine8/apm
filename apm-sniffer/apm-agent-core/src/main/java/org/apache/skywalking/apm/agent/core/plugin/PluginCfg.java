@@ -41,17 +41,20 @@ public enum PluginCfg {
         try {
             BufferedReader reader = new BufferedReader(new InputStreamReader(input));
             String pluginDefine;
+            // 因为配置文件可能是多行，所以此处不断地 readLine
             while ((pluginDefine = reader.readLine()) != null) {
                 try {
                     if (pluginDefine.trim().length() == 0 || pluginDefine.startsWith("#")) {
                         continue;
                     }
+                    // 将配置文件中的 key=value 转换成对象
                     PluginDefine plugin = PluginDefine.build(pluginDefine);
                     pluginClassList.add(plugin);
                 } catch (IllegalPluginDefineException e) {
                     LOGGER.error(e, "Failed to format plugin({}) define.", pluginDefine);
                 }
             }
+            // 通过 select 方法排除掉一些插件(通过 plugin.exclude_plugins 配置项排除)
             pluginClassList = pluginSelector.select(pluginClassList);
         } finally {
             input.close();
