@@ -18,5 +18,12 @@
 
 package org.apache.skywalking.apm.agent.core.plugin.match;
 
+/**
+ * 标识接口，表示类的匹配器。
+ *
+ * 因为要在一个复杂的系统中，想找到想要的类并不容易，所以提供了各种实现。
+ * 最简单的就是根据名称匹配的实现 NameMatch。
+ * 另外还需注意一个实现 IndirectMatch 间接匹配。
+ */
 public interface ClassMatch {
 }

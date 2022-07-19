@@ -30,34 +30,42 @@ import static net.bytebuddy.matcher.ElementMatchers.named;
 
 public class DubboInstrumentation extends ClassInstanceMethodsEnhancePluginDefine {
 
+    // 通过这个类发起远程调用
     private static final String ENHANCE_CLASS = "org.apache.dubbo.monitor.support.MonitorFilter";
 
     private static final String INTERCEPT_CLASS = "org.apache.skywalking.apm.plugin.asf.dubbo.DubboInterceptor";
 
+    // 针对 Dubbo 的哪个类的字节码进行增强
     @Override
     protected ClassMatch enhanceClass() {
+        // 根据名称，完全匹配
         return NameMatch.byName(ENHANCE_CLASS);
     }
 
+    // 获取构造方法拦截点(不需要就返回 null)
     @Override
     public ConstructorInterceptPoint[] getConstructorsInterceptPoints() {
         return null;
     }
 
+    // 获取实例方法拦截点
     @Override
     public InstanceMethodsInterceptPoint[] getInstanceMethodsInterceptPoints() {
         return new InstanceMethodsInterceptPoint[] {
             new InstanceMethodsInterceptPoint() {
+                // 此处表示要针对 Dubbo 中的 MonitorFilter 类的 invoke 方法进行增强，修改他的字节码
                 @Override
                 public ElementMatcher<MethodDescription> getMethodsMatcher() {
                     return named("invoke");
                 }
 
+                // 已知要修改 invoke 方法，那么怎么改呢？交给此方法返回的这个拦截器进行修改
                 @Override
                 public String getMethodsInterceptor() {
                     return INTERCEPT_CLASS;
                 }
 
+                // 修改原方法的字节码时，是否对原方法的入参做改变
                 @Override
                 public boolean isOverrideArgs() {
                     return false;

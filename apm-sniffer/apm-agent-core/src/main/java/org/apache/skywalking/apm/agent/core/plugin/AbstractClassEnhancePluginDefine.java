@@ -39,6 +39,8 @@ import java.util.List;
  * <p>
  * It provides the outline of enhancing the target class. If you want to know more about enhancing, you should go to see
  * {@link ClassEnhancePluginDefine}
+ *
+ * 是所有插件定义的顶级父类
  */
 public abstract class AbstractClassEnhancePluginDefine {
     private static final ILog LOGGER = LogManager.getLogger(AbstractClassEnhancePluginDefine.class);

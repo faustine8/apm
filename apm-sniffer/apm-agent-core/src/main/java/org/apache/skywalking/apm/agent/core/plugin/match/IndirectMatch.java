@@ -25,7 +25,9 @@ import net.bytebuddy.matcher.ElementMatcher;
  * All implementations can't direct match the class like {@link NameMatch} did.
  */
 public interface IndirectMatch extends ClassMatch {
+    // 连接各种限制条件
     ElementMatcher.Junction buildJunction();
 
+    // TypeDescription 可以简单的当成 class，主要就是对类的描述
     boolean isMatch(TypeDescription typeDescription);
 }
