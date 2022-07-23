@@ -99,6 +99,7 @@ public class SkyWalkingAgent {
 
         // region 3.定制化 Agent 行为
         AgentBuilder agentBuilder = new AgentBuilder.Default(byteBuddy).ignore(
+                // 指定 ByteBuddy 要忽略的类
                 nameStartsWith("net.bytebuddy.")
                         .or(nameStartsWith("org.slf4j."))
                         .or(nameStartsWith("org.groovy."))
@@ -107,7 +108,7 @@ public class SkyWalkingAgent {
                         .or(nameContains(".reflectasm."))
                         .or(nameStartsWith("sun.reflect"))
                         .or(allSkyWalkingAgentExcludeToolkit())
-                        .or(ElementMatchers.isSynthetic()));
+                        .or(ElementMatchers.isSynthetic())); // Java 编译器动态生成的类，这些类找不到源代码文件。
 
         JDK9ModuleExporter.EdgeClasses edgeClasses = new JDK9ModuleExporter.EdgeClasses();
         try {
