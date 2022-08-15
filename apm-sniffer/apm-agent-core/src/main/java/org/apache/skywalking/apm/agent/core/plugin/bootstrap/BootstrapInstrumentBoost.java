@@ -86,6 +86,8 @@ public class BootstrapInstrumentBoost {
 
     public static AgentBuilder inject(PluginFinder pluginFinder, Instrumentation instrumentation,
         AgentBuilder agentBuilder, JDK9ModuleExporter.EdgeClasses edgeClasses) throws PluginException {
+
+        // 所有要注入到 Bootstrap ClassLoader 中的类，都在这个 Map 中
         Map<String, byte[]> classesTypeMap = new HashMap<>();
 
         if (!prepareJREInstrumentation(pluginFinder, classesTypeMap)) {
@@ -96,6 +98,9 @@ public class BootstrapInstrumentBoost {
             return agentBuilder;
         }
 
+        // 经过前面两步的执行，现在 classesTypeMap 中已经有一些东西了
+
+        // 将一些高优先级的类，通过字节流的方式加入到 classesTypeMap 中
         for (String highPriorityClass : HIGH_PRIORITY_CLASSES) {
             loadHighPriorityClass(classesTypeMap, highPriorityClass);
         }
@@ -109,6 +114,7 @@ public class BootstrapInstrumentBoost {
         for (String generatedClass : classesTypeMap.keySet()) {
             edgeClasses.add(generatedClass);
         }
+        // 将前面的这些类，也加入到  包含 bytebuddy 核心注解类名(字符串)的集合 中
 
         /**
          * Inject the classes into bootstrap class loader by using Unsafe Strategy.

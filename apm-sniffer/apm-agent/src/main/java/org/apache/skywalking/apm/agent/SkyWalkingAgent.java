@@ -95,6 +95,7 @@ public class SkyWalkingAgent {
             return;
         }
 
+        // IS_OPEN_DEBUGGING_CLASS 如果设置为 true，会将所有的增强的类保存到一个 /debugging 文件夹中，方便 SkyWalking 排查问题时，对线程进行还原
         final ByteBuddy byteBuddy = new ByteBuddy().with(TypeValidation.of(Config.Agent.IS_OPEN_DEBUGGING_CLASS));
 
         // region 3.定制化 Agent 行为
@@ -110,8 +111,10 @@ public class SkyWalkingAgent {
                         .or(allSkyWalkingAgentExcludeToolkit())
                         .or(ElementMatchers.isSynthetic())); // Java 编译器动态生成的类，这些类找不到源代码文件。
 
+        // 这里实际上就是获取了一个 包含 bytebuddy 核心注解类名(字符串)的集合
         JDK9ModuleExporter.EdgeClasses edgeClasses = new JDK9ModuleExporter.EdgeClasses();
         try {
+            // 将刚刚获取到的 bytebuddy 的核心注解类名所代表的类，注入到 BootstrapClassLoader 中
             agentBuilder = BootstrapInstrumentBoost.inject(pluginFinder, instrumentation, agentBuilder, edgeClasses);
         } catch (Exception e) {
             LOGGER.error(e, "SkyWalking agent inject bootstrap instrumentation failure. Shutting down.");
@@ -119,14 +122,17 @@ public class SkyWalkingAgent {
         }
 
         try {
+            // 绕开 JDK9 模块系统的跨模块类访问
             agentBuilder = JDK9ModuleExporter.openReadEdge(instrumentation, agentBuilder, edgeClasses);
         } catch (Exception e) {
             LOGGER.error(e, "SkyWalking agent open read edge in JDK 9+ failure. Shutting down.");
             return;
         }
 
+        // 是否保存增强后的类字节码
         if (Config.Agent.IS_CACHE_ENHANCED_CLASS) {
             try {
+                // 将修改后的字节码文件保存一份到磁盘或内存中
                 agentBuilder = agentBuilder.with(new CacheableTransformerDecorator(Config.Agent.CLASS_CACHE_MODE));
                 LOGGER.info("SkyWalking agent class cache [{}] activated.", Config.Agent.CLASS_CACHE_MODE);
             } catch (Exception e) {
@@ -134,12 +140,13 @@ public class SkyWalkingAgent {
             }
         }
 
-        agentBuilder.type(pluginFinder.buildMatch())
-                    .transform(new Transformer(pluginFinder))
-                    .with(AgentBuilder.RedefinitionStrategy.RETRANSFORMATION)
+        // 细节定制
+        agentBuilder.type(pluginFinder.buildMatch()) // 指定 bytebuddy 要拦截的类
+                    .transform(new Transformer(pluginFinder)) // 指定做字节码增强的工具
+                    .with(AgentBuilder.RedefinitionStrategy.RETRANSFORMATION) // RETRANSFORMATION 保留变更前的内容(REDEFINITION 不保留变更前的内容)
                     .with(new RedefinitionListener())
                     .with(new Listener())
-                    .installOn(instrumentation);
+                    .installOn(instrumentation); // 将 Agent 安装到 Instrumentation
 
         // endregion
 
