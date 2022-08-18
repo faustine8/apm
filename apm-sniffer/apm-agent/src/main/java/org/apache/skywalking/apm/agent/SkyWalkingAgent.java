@@ -158,6 +158,7 @@ public class SkyWalkingAgent {
         }
 
         // 5. 注册「关闭钩子」
+        // 就是按照优先级倒排序去循环调用所有的 BootService 的 shutdown 方法
         Runtime.getRuntime()
                 .addShutdownHook(new Thread(ServiceManager.INSTANCE::shutdown, "skywalking service shutdown thread"));
     }
