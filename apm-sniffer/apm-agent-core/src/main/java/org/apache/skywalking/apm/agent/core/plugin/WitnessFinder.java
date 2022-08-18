@@ -30,6 +30,7 @@ import java.util.Map;
 public enum WitnessFinder {
     INSTANCE;
 
+    // Map 的 key 是 ClassLoader, value 是这个类加载加载的所有类型
     private final Map<ClassLoader, TypePool> poolMap = new HashMap<ClassLoader, TypePool>();
 
     /**
@@ -38,7 +39,7 @@ public enum WitnessFinder {
      */
     public boolean exist(String witnessClass, ClassLoader classLoader) {
         return getResolution(witnessClass, classLoader)
-                .isResolved();
+                .isResolved(); // 如果是 true, 表示存在; 如果返回 false, 表示不存在
     }
 
     /**
@@ -52,12 +53,15 @@ public enum WitnessFinder {
         if (!poolMap.containsKey(mappingKey)) {
             synchronized (poolMap) {
                 if (!poolMap.containsKey(mappingKey)) {
+                    // 基于 ClassLoader 构建 TypePool (底层就是将 ClassLoader 中所有的类拿出来放到一个池子里面)
                     TypePool classTypePool = classLoader == null ? TypePool.Default.ofBootLoader() : TypePool.Default.of(classLoader);
+                    // 放入 poolMap 中
                     poolMap.put(mappingKey, classTypePool);
                 }
             }
         }
         TypePool typePool = poolMap.get(mappingKey);
+        // 到「类型池」中找一下，是否存在传入的这个类型
         return typePool.describe(witnessClass);
     }
 
@@ -66,7 +70,9 @@ public enum WitnessFinder {
      * @return true, if the given witness method exists, through the given classLoader.
      */
     public boolean exist(WitnessMethod witnessMethod, ClassLoader classLoader) {
+        // 先查找方法所在的类 是否在这个 ClassLoader 中
         TypePool.Resolution resolution = getResolution(witnessMethod.getDeclaringClassName(), classLoader);
+        // 如果类都不存在，直接返回 false
         if (!resolution.isResolved()) {
             return false;
         }

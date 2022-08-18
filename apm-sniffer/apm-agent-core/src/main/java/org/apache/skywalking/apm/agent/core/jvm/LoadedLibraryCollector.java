@@ -49,6 +49,7 @@ public class LoadedLibraryCollector {
     private static int CURRENT_URL_CLASSLOADER_SET_MAX_SIZE = 50;
 
     public static void registerURLClassLoader(ClassLoader classLoader) {
+        // 如果是 URLClassLoader 的实例就添加到集合中
         if (CURRENT_URL_CLASSLOADER_SET.size() < CURRENT_URL_CLASSLOADER_SET_MAX_SIZE && classLoader instanceof URLClassLoader) {
             CURRENT_URL_CLASSLOADER_SET.add(classLoader);
         }
@@ -56,11 +57,15 @@ public class LoadedLibraryCollector {
 
     /**
      * Build the required JVM information to add to the instance properties
+     * 构建 JVM 信息
      */
     public static List<KeyStringValuePair> buildJVMInfo() {
         List<KeyStringValuePair> jvmInfo = new ArrayList<>();
+        // JVM 启动时间
         jvmInfo.add(KeyStringValuePair.newBuilder().setKey("Start Time").setValue(getVmStartTime()).build());
+        // JVM 启动参数
         jvmInfo.add(KeyStringValuePair.newBuilder().setKey("JVM Arguments").setValue(GSON.toJson(getVmArgs())).build());
+        // JVM 依赖的所有第三方 jar 包
         List<String> libJarNames = getLibJarNames();
         jvmInfo.add(KeyStringValuePair.newBuilder().setKey("Jar Dependencies").setValue(GSON.toJson(libJarNames)).build());
         return jvmInfo;
@@ -79,7 +84,9 @@ public class LoadedLibraryCollector {
     }
 
     private static List<String> getLibJarNames() {
+        // 获取加载的第三方依赖的资源描述符
         List<URL> classLoaderUrls = loadClassLoaderUrls();
+        // 通过资源描述符获取到所有的 jar 字符串
         return extractLibJarNamesFromURLs(classLoaderUrls);
     }
 
@@ -87,7 +94,10 @@ public class LoadedLibraryCollector {
         List<URL> classLoaderUrls = new ArrayList<>();
         for (ClassLoader classLoader : CURRENT_URL_CLASSLOADER_SET) {
             try {
+                //
                 URLClassLoader webappClassLoader = (URLClassLoader) classLoader;
+                // 通过 ClassLoader 获取加载的第三方依赖的资源描述符。
+                // (这里也理解了为什么要先判断是 URLClassLoader，因为只有 URLClassLoader 支持通过「资源描述符」从 jar 文件或某磁盘位置上加载类)
                 URL[] urls = webappClassLoader.getURLs();
                 classLoaderUrls.addAll(Arrays.asList(urls));
             } catch (Exception e) {

@@ -171,18 +171,25 @@ public class SkyWalkingAgent {
         }
 
         @Override
-        public DynamicType.Builder<?> transform(final DynamicType.Builder<?> builder,
-                                                final TypeDescription typeDescription,
-                                                final ClassLoader classLoader,
+        public DynamicType.Builder<?> transform(final DynamicType.Builder<?> builder, // 当前拦截到的类的字节码
+                                                final TypeDescription typeDescription,  // 可以简单当成 Class，他包含了类的描述信息
+                                                final ClassLoader classLoader, // 加载「当前拦截到的类」的类加载器
                                                 final JavaModule module) {
+            // 将加载「当前拦截到的类」的类加载器传入，(通常是框架的类加载器) 里面的核心方法就是构建 JVM 信息
+            // 因为一个微服务要向 OAP Server 注册自己的时候，需要这些信息
             LoadedLibraryCollector.registerURLClassLoader(classLoader);
+            // 找到所有要增强「当前被拦截到的类」的插件
             List<AbstractClassEnhancePluginDefine> pluginDefines = pluginFinder.find(typeDescription);
             if (pluginDefines.size() > 0) {
                 DynamicType.Builder<?> newBuilder = builder;
+                // 标记对象(用于标记字节码有没有被增强)
                 EnhanceContext context = new EnhanceContext();
+                // 通过 for 循环依次让所有插件去修改字节码
                 for (AbstractClassEnhancePluginDefine define : pluginDefines) {
+                    // 可能会返回被改后的字节码
                     DynamicType.Builder<?> possibleNewBuilder = define.define(
                             typeDescription, newBuilder, classLoader, context);
+                    // 如果真的返回了新的增强后的字节码，就覆盖掉之前的字节码
                     if (possibleNewBuilder != null) {
                         newBuilder = possibleNewBuilder;
                     }
@@ -191,11 +198,12 @@ public class SkyWalkingAgent {
                     LOGGER.debug("Finish the prepare stage for {}.", typeDescription.getName());
                 }
 
+                // 被所有可用插件修改完后的「最终字节码」
                 return newBuilder;
             }
 
             LOGGER.debug("Matched class {}, but ignore by finding mechanism.", typeDescription.getTypeName());
-            return builder;
+            return builder; // 被拦截到的类的原生字节码
         }
     }
 
