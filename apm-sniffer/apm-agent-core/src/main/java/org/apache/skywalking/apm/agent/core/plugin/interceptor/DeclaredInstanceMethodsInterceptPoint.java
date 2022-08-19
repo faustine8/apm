@@ -21,6 +21,8 @@ package org.apache.skywalking.apm.agent.core.plugin.interceptor;
 /**
  * this interface for those who only want to enhance declared method in case of some unexpected issue, such as spring
  * controller
+ * <p>
+ * 在某些特殊情况下，需要增强一些声明式的方法，比如 spring 的 controller
  */
 public interface DeclaredInstanceMethodsInterceptPoint extends InstanceMethodsInterceptPoint {
 }

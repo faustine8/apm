@@ -66,9 +66,12 @@ public abstract class ClassEnhancePluginDefine extends AbstractClassEnhancePlugi
     protected DynamicType.Builder<?> enhanceInstance(TypeDescription typeDescription,
         DynamicType.Builder<?> newClassBuilder, ClassLoader classLoader,
         EnhanceContext context) throws PluginException {
+        // 拿到所有的构造器拦截点
         ConstructorInterceptPoint[] constructorInterceptPoints = getConstructorsInterceptPoints();
+        // 拿到所有实例方法拦截点
         InstanceMethodsInterceptPoint[] instanceMethodsInterceptPoints = getInstanceMethodsInterceptPoints();
         String enhanceOriginClassName = typeDescription.getTypeName();
+        // 判断是否存在构造方法拦截点和实例方法拦截点
         boolean existedConstructorInterceptPoint = false;
         if (constructorInterceptPoints != null && constructorInterceptPoints.length > 0) {
             existedConstructorInterceptPoint = true;
@@ -80,6 +83,7 @@ public abstract class ClassEnhancePluginDefine extends AbstractClassEnhancePlugi
 
         /**
          * nothing need to be enhanced in class instance, maybe need enhance static methods.
+         * 如果都不存在，直接返回
          */
         if (!existedConstructorInterceptPoint && !existedMethodsInterceptPoints) {
             return newClassBuilder;
@@ -93,33 +97,33 @@ public abstract class ClassEnhancePluginDefine extends AbstractClassEnhancePlugi
          * 2.Add a field accessor for this field.
          *
          * And make sure the source codes manipulation only occurs once.
-         *
+         * 确保此处这个操作只执行一次. (所以做了双重判断)
          */
-        if (!typeDescription.isAssignableTo(EnhancedInstance.class)) {
-            if (!context.isObjectExtended()) {
+        if (!typeDescription.isAssignableTo(EnhancedInstance.class)) { // 如果当前拦截到的类，没有实现 EnhancedInstance 接口
+            if (!context.isObjectExtended()) {// 通过上下文标识类，判断当前拦截到的类没有新增了成员变量或者实现了新的接口
                 newClassBuilder = newClassBuilder.defineField(
-                    CONTEXT_ATTR_NAME, Object.class, ACC_PRIVATE | ACC_VOLATILE)
-                                                 .implement(EnhancedInstance.class)
-                                                 .intercept(FieldAccessor.ofField(CONTEXT_ATTR_NAME));
-                context.extendObjectCompleted();
+                    CONTEXT_ATTR_NAME, Object.class, ACC_PRIVATE | ACC_VOLATILE) // 通过 bytebuddy API 添加 Object 类型的成员变量，并指定修饰符和变量名
+                                                 .implement(EnhancedInstance.class) // 添加实现接口
+                                                 .intercept(FieldAccessor.ofField(CONTEXT_ATTR_NAME)); // 将 EnhancedInstance 中的 getter/setter 作为刚刚新增的成员变量的 getter/setter
+                context.extendObjectCompleted(); // 标记已经添加了成员变量/实现了新的接口
             }
         }
 
         /**
          * 2. enhance constructors
          */
-        if (existedConstructorInterceptPoint) {
+        if (existedConstructorInterceptPoint) { // 如果存在构造器拦截点
             for (ConstructorInterceptPoint constructorInterceptPoint : constructorInterceptPoints) {
-                if (isBootstrapInstrumentation()) {
+                if (isBootstrapInstrumentation()) { // 是 JDK 核心类库的类
                     newClassBuilder = newClassBuilder.constructor(constructorInterceptPoint.getConstructorMatcher())
                                                      .intercept(SuperMethodCall.INSTANCE.andThen(MethodDelegation.withDefaultConfiguration()
                                                                                                                  .to(BootstrapInstrumentBoost
                                                                                                                      .forInternalDelegateClass(constructorInterceptPoint
                                                                                                                          .getConstructorInterceptor()))));
-                } else {
+                } else { // 不是 JDK 核心类库的类
                     newClassBuilder = newClassBuilder.constructor(constructorInterceptPoint.getConstructorMatcher())
                                                      .intercept(SuperMethodCall.INSTANCE.andThen(MethodDelegation.withDefaultConfiguration()
-                                                                                                                 .to(new ConstructorInter(constructorInterceptPoint
+                                                                                                                 .to(new ConstructorInter(constructorInterceptPoint // 包装 ConstructorInter
                                                                                                                      .getConstructorInterceptor(), classLoader))));
                 }
             }
@@ -128,16 +132,20 @@ public abstract class ClassEnhancePluginDefine extends AbstractClassEnhancePlugi
         /**
          * 3. enhance instance methods
          */
-        if (existedMethodsInterceptPoints) {
+        if (existedMethodsInterceptPoints) { // 如果存在实例方法拦截点
             for (InstanceMethodsInterceptPoint instanceMethodsInterceptPoint : instanceMethodsInterceptPoints) {
+                // 获取 interceptor 的全限定类名，如果不存在就抛除异常
                 String interceptor = instanceMethodsInterceptPoint.getMethodsInterceptor();
                 if (StringUtil.isEmpty(interceptor)) {
                     throw new EnhanceException("no InstanceMethodsAroundInterceptor define to enhance class " + enhanceOriginClassName);
                 }
+                // 首先要不是静态方法，而且要满足 getMethodsMatcher 中指定的条件
                 ElementMatcher.Junction<MethodDescription> junction = not(isStatic()).and(instanceMethodsInterceptPoint.getMethodsMatcher());
+                // 拦截点如果是 声明式 的(如 spring 的 controller) ,就添加必须满足：有当前这个类声明的
                 if (instanceMethodsInterceptPoint instanceof DeclaredInstanceMethodsInterceptPoint) {
                     junction = junction.and(ElementMatchers.<MethodDescription>isDeclaredBy(typeDescription));
                 }
+                // 根据是否修改参数 + 是否 JDK 核心类库的类，走 4 个不同的分支
                 if (instanceMethodsInterceptPoint.isOverrideArgs()) {
                     if (isBootstrapInstrumentation()) {
                         newClassBuilder = newClassBuilder.method(junction)

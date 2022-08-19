@@ -123,6 +123,7 @@ public abstract class AbstractClassEnhancePluginDefine {
         // 增强静态方法
         newClassBuilder = this.enhanceClass(typeDescription, newClassBuilder, classLoader);
 
+        // 实例方法增强
         newClassBuilder = this.enhanceInstance(typeDescription, newClassBuilder, classLoader, context);
 
         return newClassBuilder;

@@ -45,6 +45,7 @@ public class ConstructorInter {
      */
     public ConstructorInter(String constructorInterceptorClassName, ClassLoader classLoader) throws PluginException {
         try {
+            // 通过全限定类名加载实例化的 interceptor 对象
             interceptor = InterceptorInstanceLoader.load(constructorInterceptorClassName, classLoader);
         } catch (Throwable t) {
             throw new PluginException("Can't create InstanceConstructorInterceptorV2.", t);
@@ -60,8 +61,10 @@ public class ConstructorInter {
     @RuntimeType
     public void intercept(@This Object obj, @AllArguments Object[] allArguments) {
         try {
+            // 此处向下转型，就能够获取到在上一步添加的动态 成员变量。获取到之后，就能在 onConstruct 阶段将任意数据放入 动态成员变量 当中
             EnhancedInstance targetObject = (EnhancedInstance) obj;
 
+            // 原生构造方法执行完后，才执行此处的逻辑
             interceptor.onConstruct(targetObject, allArguments);
         } catch (Throwable t) {
             LOGGER.error("ConstructorInter failure.", t);

@@ -26,6 +26,6 @@ public class ActiveMQProducerConstructorInterceptor implements InstanceConstruct
     @Override
     public void onConstruct(EnhancedInstance objInst, Object[] allArguments) {
         ActiveMQSession session = (ActiveMQSession) allArguments[0];
-        objInst.setSkyWalkingDynamicField(session.getConnection().getTransport().getRemoteAddress().split("//")[1]);
+        objInst.setSkyWalkingDynamicField(session.getConnection().getTransport().getRemoteAddress().split("//")[1]); // 将 Broker 的地址保存到 SkyWalking 提供的动态字段上去
     }
 }

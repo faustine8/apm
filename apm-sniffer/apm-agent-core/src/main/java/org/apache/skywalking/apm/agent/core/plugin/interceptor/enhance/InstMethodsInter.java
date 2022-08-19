@@ -45,6 +45,9 @@ public class InstMethodsInter {
     private InstanceMethodsAroundInterceptor interceptor;
 
     /**
+     * 这里相较于静态方法增强，参数多了一个 classLoader, 是因为静态方法是通过类调用，由什么类加载器加载的无所谓；
+     * 但是判断对象相等时，首先要判断是不是同一个类加载器加载的，然后再判断是不是同一份字节码。
+     *
      * @param instanceMethodsAroundInterceptorClassName class full name.
      */
     public InstMethodsInter(String instanceMethodsAroundInterceptorClassName, ClassLoader classLoader) {
