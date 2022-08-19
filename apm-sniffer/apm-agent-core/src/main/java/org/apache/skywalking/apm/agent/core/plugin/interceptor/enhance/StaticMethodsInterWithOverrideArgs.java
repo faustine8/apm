@@ -56,7 +56,7 @@ public class StaticMethodsInterWithOverrideArgs {
      * @param clazz        target class
      * @param allArguments all method arguments
      * @param method       method description.
-     * @param zuper        the origin call ref.
+     * @param zuper        the origin call ref.  此处使用的是自定义的 OverrideCallable，相较于原生的 call 方法此处允许在调用的时候传入参数。【此处是与 StaticMethodsInter 的唯一区别】
      * @return the return value of target static method.
      * @throws Exception only throw exception because of zuper.call() or unexpected exception in sky-walking ( This is a
      *                   bug, if anything triggers this condition ).
@@ -69,6 +69,7 @@ public class StaticMethodsInterWithOverrideArgs {
 
         MethodInterceptResult result = new MethodInterceptResult();
         try {
+            // 因为后面调用 call 方法的时候，可以传入 allArguments 对象，所以可以在 beforeMethod 的逻辑中修改 allArguments 对象
             interceptor.beforeMethod(clazz, method, allArguments, method.getParameterTypes(), result);
         } catch (Throwable t) {
             LOGGER.error(t, "class[{}] before static method[{}] intercept failure", clazz, method.getName());

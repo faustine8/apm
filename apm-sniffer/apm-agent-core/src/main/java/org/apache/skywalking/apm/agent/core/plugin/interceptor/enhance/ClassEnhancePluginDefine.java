@@ -176,39 +176,43 @@ public abstract class ClassEnhancePluginDefine extends AbstractClassEnhancePlugi
      */
     protected DynamicType.Builder<?> enhanceClass(TypeDescription typeDescription, DynamicType.Builder<?> newClassBuilder,
         ClassLoader classLoader) throws PluginException {
+        // 当前生效的插件的「静态方法拦截器」指定的「静态方法拦截点」
         StaticMethodsInterceptPoint[] staticMethodsInterceptPoints = getStaticMethodsInterceptPoints();
         String enhanceOriginClassName = typeDescription.getTypeName();
+        // 如果没有拦截点，直接返回了
         if (staticMethodsInterceptPoints == null || staticMethodsInterceptPoints.length == 0) {
             return newClassBuilder;
         }
 
+        // 拿到拦截点后，开始处理
         for (StaticMethodsInterceptPoint staticMethodsInterceptPoint : staticMethodsInterceptPoints) {
+            // 拿到增强逻辑所在的类的全类名
             String interceptor = staticMethodsInterceptPoint.getMethodsInterceptor();
             if (StringUtil.isEmpty(interceptor)) {
                 throw new EnhanceException("no StaticMethodsAroundInterceptor define to enhance class " + enhanceOriginClassName);
             }
 
-            if (staticMethodsInterceptPoint.isOverrideArgs()) {
-                if (isBootstrapInstrumentation()) {
+            if (staticMethodsInterceptPoint.isOverrideArgs()) { // 是否需要改方法的参数
+                if (isBootstrapInstrumentation()) { // 感兴趣的类是否是由 Bootstrap 类加载器加载的 (这类「类」需要独立处理)
                     newClassBuilder = newClassBuilder.method(isStatic().and(staticMethodsInterceptPoint.getMethodsMatcher()))
                                                      .intercept(MethodDelegation.withDefaultConfiguration()
                                                                                 .withBinders(Morph.Binder.install(OverrideCallable.class))
                                                                                 .to(BootstrapInstrumentBoost.forInternalDelegateClass(interceptor)));
-                } else {
+                } else { // 不是 JDK 核心类库的类
                     newClassBuilder = newClassBuilder.method(isStatic().and(staticMethodsInterceptPoint.getMethodsMatcher()))
                                                      .intercept(MethodDelegation.withDefaultConfiguration()
                                                                                 .withBinders(Morph.Binder.install(OverrideCallable.class))
-                                                                                .to(new StaticMethodsInterWithOverrideArgs(interceptor)));
+                                                                                .to(new StaticMethodsInterWithOverrideArgs(interceptor))); // 相较于不修改原方法入参的，这里使用的是 StaticMethodsInterWithOverrideArgs
                 }
-            } else {
-                if (isBootstrapInstrumentation()) {
+            } else { // 不需要修改原方法的入参
+                if (isBootstrapInstrumentation()) { // 要修改的是 JDK 核心类库的类
                     newClassBuilder = newClassBuilder.method(isStatic().and(staticMethodsInterceptPoint.getMethodsMatcher()))
                                                      .intercept(MethodDelegation.withDefaultConfiguration()
                                                                                 .to(BootstrapInstrumentBoost.forInternalDelegateClass(interceptor)));
-                } else {
-                    newClassBuilder = newClassBuilder.method(isStatic().and(staticMethodsInterceptPoint.getMethodsMatcher()))
+                } else { // 要修改的不是 JDK 核心类库的类
+                    newClassBuilder = newClassBuilder.method(isStatic().and(staticMethodsInterceptPoint.getMethodsMatcher())) // 找到指定的方法
                                                      .intercept(MethodDelegation.withDefaultConfiguration()
-                                                                                .to(new StaticMethodsInter(interceptor)));
+                                                                                .to(new StaticMethodsInter(interceptor))); // 通过 interceptor 的全类名，真正做字节码增强
                 }
             }
 

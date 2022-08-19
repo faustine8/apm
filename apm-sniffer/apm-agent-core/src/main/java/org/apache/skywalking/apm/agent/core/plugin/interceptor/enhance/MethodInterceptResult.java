@@ -28,12 +28,17 @@ import java.lang.reflect.Method;
  * MethodInterceptResult#defineReturnValue(Object)}, will override the origin return value.
  */
 public class MethodInterceptResult {
+
+    // interceptor 的主流程是否继续往下走
     private boolean isContinue = true;
 
+    // result 的缩写，方法的最终返回值
     private Object ret = null;
 
     /**
      * define the new return value.
+     *
+     * 设定返回值，并终止 interceptor 后续的执行。(如：执行完 before 后不再执行 after 的逻辑)
      *
      * @param ret new return value.
      */
