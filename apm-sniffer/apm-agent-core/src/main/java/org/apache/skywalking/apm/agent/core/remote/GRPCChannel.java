@@ -37,17 +37,21 @@ public class GRPCChannel {
 
     private GRPCChannel(String host, int port, List<ChannelBuilder> channelBuilders,
                         List<ChannelDecorator> decorators) throws Exception {
+        // 借助 Netty 建立底层连接
         ManagedChannelBuilder channelBuilder = NettyChannelBuilder.forAddress(host, port);
 
         NameResolverRegistry.getDefaultRegistry().register(new DnsNameResolverProvider());
 
+        // 通过 Builder 构造 Channel
         for (ChannelBuilder builder : channelBuilders) {
             channelBuilder = builder.build(channelBuilder);
         }
 
         this.originChannel = channelBuilder.build();
 
+        // 将 originChannel 赋值给 channel
         Channel channel = originChannel;
+        // 如果有装饰器, 就对 channel 进行装饰
         for (ChannelDecorator decorator : decorators) {
             channel = decorator.build(channel);
         }

@@ -43,16 +43,19 @@ import org.apache.skywalking.apm.util.RunnableWithExceptionProtection;
 
 import static org.apache.skywalking.apm.agent.core.conf.Config.Collector.IS_RESOLVE_DNS_PERIODICALLY;
 
+/**
+ * 这个服务式 Agent 到 OAP 的大动脉, 也就是网络连接
+ */
 @DefaultImplementor
 public class GRPCChannelManager implements BootService, Runnable {
     private static final ILog LOGGER = LogManager.getLogger(GRPCChannelManager.class);
 
-    private volatile GRPCChannel managedChannel = null;
+    private volatile GRPCChannel managedChannel = null; // 网络链接
     private volatile ScheduledFuture<?> connectCheckFuture;
     private volatile boolean reconnect = true;
     private final Random random = new Random();
     private final List<GRPCChannelListener> listeners = Collections.synchronizedList(new LinkedList<>());
-    private volatile List<String> grpcServers;
+    private volatile List<String> grpcServers; // OAP 地址列表
     private volatile int selectedIdx = -1;
     private volatile int reconnectCount = 0;
 
@@ -63,6 +66,7 @@ public class GRPCChannelManager implements BootService, Runnable {
 
     @Override
     public void boot() {
+        // 检查 OAP 地址
         if (Config.Collector.BACKEND_SERVICE.trim().length() == 0) {
             LOGGER.error("Collector server addresses are not set.");
             LOGGER.error("Agent will not uplink any data.");

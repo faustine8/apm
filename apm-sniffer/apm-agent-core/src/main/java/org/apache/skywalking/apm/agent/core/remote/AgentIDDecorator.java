@@ -37,6 +37,8 @@ import org.apache.skywalking.apm.agent.core.logging.api.LogManager;
 
 /**
  * Add agent version(Described in MANIFEST.MF) to the connection establish stage.
+ *
+ * 解析 Agent 的版本, 每次在向 OAP 发送数据的时候,都带上 version, 避免了 Agent 和 OAP 不兼容的问题
  */
 public class AgentIDDecorator implements ChannelDecorator {
     private static final ILog LOGGER = LogManager.getLogger(AgentIDDecorator.class);
