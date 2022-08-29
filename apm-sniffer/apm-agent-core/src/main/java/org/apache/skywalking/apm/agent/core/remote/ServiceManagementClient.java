@@ -44,20 +44,29 @@ import org.apache.skywalking.apm.util.RunnableWithExceptionProtection;
 
 import static org.apache.skywalking.apm.agent.core.conf.Config.Collector.GRPC_UPSTREAM_TIMEOUT;
 
+/**
+ * 自报家门/打招呼
+ *
+ * 1. 将当前 AgentClient 的基本信息汇报给 OAP
+ * 2. 和 OAP 保持心跳
+ */
 @DefaultImplementor
 public class ServiceManagementClient implements BootService, Runnable, GRPCChannelListener {
     private static final ILog LOGGER = LogManager.getLogger(ServiceManagementClient.class);
     private static List<KeyStringValuePair> SERVICE_INSTANCE_PROPERTIES;
 
-    private volatile GRPCChannelStatus status = GRPCChannelStatus.DISCONNECT;
-    private volatile ManagementServiceGrpc.ManagementServiceBlockingStub managementServiceBlockingStub;
+    private volatile GRPCChannelStatus status = GRPCChannelStatus.DISCONNECT; // 当前网络连接状态
+    private volatile ManagementServiceGrpc.ManagementServiceBlockingStub managementServiceBlockingStub; // 网络服务
     private volatile ScheduledFuture<?> heartbeatFuture;
     private volatile AtomicInteger sendPropertiesCounter = new AtomicInteger(0);
 
     @Override
     public void statusChanged(GRPCChannelStatus status) {
+        // 收到 GRPCChannelListener 的状态变更通知, 看是否已经连接上了
         if (GRPCChannelStatus.CONNECTED.equals(status)) {
+            // 找到 GRPCChannelManager 服务, 拿到网络连接
             Channel channel = ServiceManager.INSTANCE.findService(GRPCChannelManager.class).getChannel();
+            // grpc 中的 stub 可以理解为你在 protobuf 中定义的 XxxService
             managementServiceBlockingStub = ManagementServiceGrpc.newBlockingStub(channel);
         } else {
             managementServiceBlockingStub = null;
@@ -67,6 +76,7 @@ public class ServiceManagementClient implements BootService, Runnable, GRPCChann
 
     @Override
     public void prepare() {
+        // 将自身
         ServiceManager.INSTANCE.findService(GRPCChannelManager.class).addChannelListener(this);
 
         SERVICE_INSTANCE_PROPERTIES = new ArrayList<>();
