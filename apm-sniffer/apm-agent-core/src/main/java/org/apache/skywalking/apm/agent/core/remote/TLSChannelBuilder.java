@@ -38,6 +38,7 @@ public class TLSChannelBuilder implements ChannelBuilder<NettyChannelBuilder> {
     @Override
     public NettyChannelBuilder build(
         NettyChannelBuilder managedChannelBuilder) throws AgentPackageNotFoundException, SSLException {
+        // 到 /agent/ca 目录下去找 ca.crt 证书
         File caFile = new File(AgentPackagePath.getPath(), CA_FILE_NAME);
         boolean isCAFileExist = caFile.exists() && caFile.isFile();
         if (Config.Agent.FORCE_TLS || isCAFileExist) {

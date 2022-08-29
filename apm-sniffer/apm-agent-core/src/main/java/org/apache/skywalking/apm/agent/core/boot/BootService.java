@@ -34,6 +34,8 @@ public interface BootService {
     /**
      * {@code BootService}s with higher priorities will be started earlier, and shut down later than those {@code BootService}s with lower priorities.
      *
+     * 返回值越大, 越先启动; 相应地, 关闭时也就越后关闭.
+     *
      * @return the priority of this {@code BootService}.
      */
     default int priority() {

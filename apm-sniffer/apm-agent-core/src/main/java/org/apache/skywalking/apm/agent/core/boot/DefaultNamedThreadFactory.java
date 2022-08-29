@@ -22,7 +22,11 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class DefaultNamedThreadFactory implements ThreadFactory {
+
+    // 表明这是第几个线程工厂
     private static final AtomicInteger BOOT_SERVICE_SEQ = new AtomicInteger(0);
+
+    // 当前线程工厂创建的第几条线程
     private final AtomicInteger threadSeq = new AtomicInteger(0);
     private final String namePrefix;
 

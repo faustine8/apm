@@ -21,5 +21,9 @@ package org.apache.skywalking.apm.agent.core.remote;
 import io.grpc.ManagedChannelBuilder;
 
 public interface ChannelBuilder<B extends ManagedChannelBuilder> {
+
+    /**
+     * 从方法声明上可以看出, 传入了一个对象又将这个对象返回, 可知是在里面对这个对象做了一些构建
+     */
     B build(B managedChannelBuilder) throws Exception;
 }

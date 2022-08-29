@@ -47,6 +47,7 @@ public class AgentIDDecorator implements ChannelDecorator {
 
     public AgentIDDecorator() {
         try {
+            // 解析 MANIFEST.MF 文件, 从中获取 version 信息
             Enumeration<URL> resources = AgentIDDecorator.class.getClassLoader().getResources(JarFile.MANIFEST_NAME);
             while (resources.hasMoreElements()) {
                 URL url = resources.nextElement();

@@ -21,5 +21,9 @@ package org.apache.skywalking.apm.agent.core.remote;
 import io.grpc.Channel;
 
 public interface ChannelDecorator {
+
+    /**
+     * 和前面 ChannelBuilder 类似, 都是链式的构造
+     */
     Channel build(Channel channel);
 }
