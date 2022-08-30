@@ -53,11 +53,11 @@ import static org.apache.skywalking.apm.agent.core.conf.Config.Collector.GRPC_UP
 @DefaultImplementor
 public class ServiceManagementClient implements BootService, Runnable, GRPCChannelListener {
     private static final ILog LOGGER = LogManager.getLogger(ServiceManagementClient.class);
-    private static List<KeyStringValuePair> SERVICE_INSTANCE_PROPERTIES;
+    private static List<KeyStringValuePair> SERVICE_INSTANCE_PROPERTIES; // AgentClient 的信息
 
     private volatile GRPCChannelStatus status = GRPCChannelStatus.DISCONNECT; // 当前网络连接状态
     private volatile ManagementServiceGrpc.ManagementServiceBlockingStub managementServiceBlockingStub; // 网络服务
-    private volatile ScheduledFuture<?> heartbeatFuture;
+    private volatile ScheduledFuture<?> heartbeatFuture; // 心跳定时任务
     private volatile AtomicInteger sendPropertiesCounter = new AtomicInteger(0);
 
     @Override
@@ -76,12 +76,14 @@ public class ServiceManagementClient implements BootService, Runnable, GRPCChann
 
     @Override
     public void prepare() {
-        // 将自身
+        // 将自身注册为一个监听器
         ServiceManager.INSTANCE.findService(GRPCChannelManager.class).addChannelListener(this);
 
         SERVICE_INSTANCE_PROPERTIES = new ArrayList<>();
 
-        for (String key : Config.Agent.INSTANCE_PROPERTIES.keySet()) {
+        // 把配置文件中的 Agent Client 的信息放入集合, 等待发送
+        for (String key : Config.Agent.INSTANCE_PROPERTIES.keySet()) { // 从配置文件的 instance_properties 中取出数据
+            // 将取出的数据组装成 KeyStringValuePair, 再放进集合中
             SERVICE_INSTANCE_PROPERTIES.add(KeyStringValuePair.newBuilder()
                                                               .setKey(key)
                                                               .setValue(Config.Agent.INSTANCE_PROPERTIES.get(key))
