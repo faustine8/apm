@@ -58,7 +58,7 @@ public class ServiceManagementClient implements BootService, Runnable, GRPCChann
     private volatile GRPCChannelStatus status = GRPCChannelStatus.DISCONNECT; // 当前网络连接状态
     private volatile ManagementServiceGrpc.ManagementServiceBlockingStub managementServiceBlockingStub; // 网络服务
     private volatile ScheduledFuture<?> heartbeatFuture; // 心跳定时任务
-    private volatile AtomicInteger sendPropertiesCounter = new AtomicInteger(0);
+    private volatile AtomicInteger sendPropertiesCounter = new AtomicInteger(0); // Agent 信息发送次数计数器
 
     @Override
     public void statusChanged(GRPCChannelStatus status) {
@@ -93,7 +93,8 @@ public class ServiceManagementClient implements BootService, Runnable, GRPCChann
 
     @Override
     public void boot() {
-        heartbeatFuture = Executors.newSingleThreadScheduledExecutor(
+        // 心跳定时任务
+        heartbeatFuture = Executors.newSingleThreadScheduledExecutor( // 创建单线程的线程调度池
             new DefaultNamedThreadFactory("ServiceManagementClient")
         ).scheduleAtFixedRate(
             new RunnableWithExceptionProtection(
@@ -110,6 +111,7 @@ public class ServiceManagementClient implements BootService, Runnable, GRPCChann
 
     @Override
     public void shutdown() {
+        // 关闭时, 取消心跳
         heartbeatFuture.cancel(true);
     }
 
@@ -117,22 +119,27 @@ public class ServiceManagementClient implements BootService, Runnable, GRPCChann
     public void run() {
         LOGGER.debug("ServiceManagementClient running, status:{}.", status);
 
-        if (GRPCChannelStatus.CONNECTED.equals(status)) {
+        if (GRPCChannelStatus.CONNECTED.equals(status)) { // 首先判断网络链接是否已连接
             try {
-                if (managementServiceBlockingStub != null) {
+                if (managementServiceBlockingStub != null) { // 判断 stub 是否已经创建好了
+                    // 这里为什么取 绝对值? 因为程序运行时间过久, 可能超出 int 取值范围, 会变成负数
                     if (Math.abs(sendPropertiesCounter.getAndAdd(1)) % Config.Collector.PROPERTIES_REPORT_PERIOD_FACTOR == 0) {
+                        // 心跳周期: 30s, 信息汇报频率因子(PROPERTIES_REPORT_PERIOD_FACTOR): 10
+                        // Round1: counter = 0; 0 % 10 = 0;
+                        // Round1: counter = 1; 1 % 10 != 0;
 
                         managementServiceBlockingStub
-                            .withDeadlineAfter(GRPC_UPSTREAM_TIMEOUT, TimeUnit.SECONDS)
+                            .withDeadlineAfter(GRPC_UPSTREAM_TIMEOUT, TimeUnit.SECONDS) // 设置请求超时时间
                             .reportInstanceProperties(InstanceProperties.newBuilder()
                                                                         .setService(Config.Agent.SERVICE_NAME)
                                                                         .setServiceInstance(Config.Agent.INSTANCE_NAME)
-                                                                        .addAllProperties(OSUtil.buildOSInfo(
+                                                                        .addAllProperties(OSUtil.buildOSInfo( // 构建操作系统信息
                                                                             Config.OsInfo.IPV4_LIST_SIZE))
                                                                         .addAllProperties(SERVICE_INSTANCE_PROPERTIES)
-                                                                        .addAllProperties(LoadedLibraryCollector.buildJVMInfo())
+                                                                        .addAllProperties(LoadedLibraryCollector.buildJVMInfo()) // JVM 信息
                                                                         .build());
                     } else {
+                        // 上报数据, 返回 commands
                         final Commands commands = managementServiceBlockingStub.withDeadlineAfter(
                             GRPC_UPSTREAM_TIMEOUT, TimeUnit.SECONDS
                         ).keepAlive(InstancePingPkg.newBuilder()
@@ -140,6 +147,7 @@ public class ServiceManagementClient implements BootService, Runnable, GRPCChann
                                                    .setServiceInstance(Config.Agent.INSTANCE_NAME)
                                                    .build());
 
+                        // 将 返回的 commands 交给 commandService 处理
                         ServiceManager.INSTANCE.findService(CommandService.class).receiveCommand(commands);
                     }
                 }

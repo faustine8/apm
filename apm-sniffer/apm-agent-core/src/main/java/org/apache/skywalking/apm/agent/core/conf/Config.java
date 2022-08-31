@@ -155,6 +155,10 @@ public class Config {
         public static long HEARTBEAT_PERIOD = 30;
         /**
          * The agent sends the instance properties to the backend every `collector.heartbeat_period * collector.properties_report_period_factor` seconds
+         *
+         * Agent 信息汇报周期因子.
+         *
+         * 以当前为例 Agent 每 5 分钟(30 * 10 s)向 OAP 汇报一次 Agent Properties
          */
         public static int PROPERTIES_REPORT_PERIOD_FACTOR = 10;
         /**

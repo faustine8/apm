@@ -26,14 +26,19 @@ import org.apache.skywalking.apm.agent.core.os.OSUtil;
 
 import static org.apache.skywalking.apm.util.StringUtil.isEmpty;
 
+/**
+ * 专门用来生成 ServiceInstance 名称
+ */
 @Getter
 public class ServiceInstanceGenerator implements BootService {
     @Override
     public void prepare() throws Throwable {
+        // 如果配置了 serviceInstance 名称, 直接返回
         if (!isEmpty(Config.Agent.INSTANCE_NAME)) {
             return;
         }
 
+        // 默认生成规则: uuid@ipv4
         Config.Agent.INSTANCE_NAME = UUID.randomUUID().toString().replaceAll("-", "") + "@" + OSUtil.getIPV4();
     }
 
