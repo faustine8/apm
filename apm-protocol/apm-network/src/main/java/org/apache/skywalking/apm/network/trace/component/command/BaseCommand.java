@@ -23,8 +23,11 @@ import org.apache.skywalking.apm.network.common.v3.KeyStringValuePair;
 
 public abstract class BaseCommand {
 
+    // 命令本身
     private final String command;
+    // 序列号
     private final String serialNumber;
+    // 主要就是保留命令的附加信息
     private final Command.Builder commandBuilder;
 
     BaseCommand(String command, String serialNumber) {

@@ -33,6 +33,8 @@ public class ConfigurationDiscoveryCommand extends BaseCommand implements Serial
 
     /*
      * If config is unchanged, then could response the same uuid, and config is not required.
+     *
+     * 如果配置文件没有发生变化, 则返回的 uuid 也不会变更.
      */
     private String uuid;
     /*
@@ -54,7 +56,9 @@ public class ConfigurationDiscoveryCommand extends BaseCommand implements Serial
         String uuid = null;
         List<KeyStringValuePair> config = new ArrayList<>();
 
+        // 迭代所有的 arguments
         for (final KeyStringValuePair pair : command.getArgsList()) {
+            // Key 是 SerialNumber 或者 UUID 的情况, 特殊处理; 否则直接加入 config 集合
             if (SERIAL_NUMBER_CONST_NAME.equals(pair.getKey())) {
                 serialNumber = pair.getValue();
             } else if (UUID_CONST_NAME.equals(pair.getKey())) {
@@ -63,6 +67,7 @@ public class ConfigurationDiscoveryCommand extends BaseCommand implements Serial
                 config.add(pair);
             }
         }
+        // 然后调用构造器构建的对象
         return new ConfigurationDiscoveryCommand(serialNumber, uuid, config);
     }
 

@@ -23,9 +23,9 @@ public class CommandDeserializer {
 
     public static BaseCommand deserialize(final Command command) {
         final String commandName = command.getCommand();
-        if (ProfileTaskCommand.NAME.equals(commandName)) {
+        if (ProfileTaskCommand.NAME.equals(commandName)) { // 如果是性能分析的命令, 就走性能分析 自己的命令反序列化
             return ProfileTaskCommand.DESERIALIZER.deserialize(command);
-        } else if (ConfigurationDiscoveryCommand.NAME.equals(commandName)) {
+        } else if (ConfigurationDiscoveryCommand.NAME.equals(commandName)) { // 如果是配置和发现的命令 (用于运行时动态更改配置的)
             return ConfigurationDiscoveryCommand.DESERIALIZER.deserialize(command);
         }
         throw new UnsupportedCommandException(command);

@@ -20,20 +20,36 @@ package org.apache.skywalking.apm.agent.core.commands;
 import java.util.Deque;
 import java.util.concurrent.LinkedBlockingDeque;
 
+/**
+ * 命令的序列号缓存. 序列号被放到一个队列里面, 并且做了容量控制.
+ */
 public class CommandSerialNumberCache {
     private static final int DEFAULT_MAX_CAPACITY = 64;
     private final Deque<String> queue;
     private final int maxCapacity;
 
+    /**
+     * 默认容量为 64
+     */
     public CommandSerialNumberCache() {
         this(DEFAULT_MAX_CAPACITY);
     }
 
+    /**
+     * 可以自己指定容量
+     *
+     * @param maxCapacity 容量大小
+     */
     public CommandSerialNumberCache(int maxCapacity) {
         queue = new LinkedBlockingDeque<String>(maxCapacity);
         this.maxCapacity = maxCapacity;
     }
 
+    /**
+     * 往队列中添加数据. 如果队列满, 就删除第一个元素, 然后添加
+     *
+     * @param number 新元素(序列号)
+     */
     public void add(String number) {
         if (queue.size() >= maxCapacity) {
             queue.pollFirst();
@@ -42,6 +58,9 @@ public class CommandSerialNumberCache {
         queue.add(number);
     }
 
+    /**
+     * 判断队列中是否包含命令(的序列号)
+     */
     public boolean contain(String command) {
         return queue.contains(command);
     }
