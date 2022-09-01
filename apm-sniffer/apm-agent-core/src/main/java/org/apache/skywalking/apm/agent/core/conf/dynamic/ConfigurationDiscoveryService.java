@@ -62,9 +62,9 @@ public class ConfigurationDiscoveryService implements BootService, GRPCChannelLi
     private String uuid;
     private final Register register = new Register();
 
-    private volatile int lastRegisterWatcherSize;
+    private volatile int lastRegisterWatcherSize; // 上一次计算的 watcher 的数量
 
-    private volatile ScheduledFuture<?> getDynamicConfigurationFuture;
+    private volatile ScheduledFuture<?> getDynamicConfigurationFuture; // 单线程任务
     private volatile GRPCChannelStatus status = GRPCChannelStatus.DISCONNECT;
     private volatile ConfigurationDiscoveryServiceGrpc.ConfigurationDiscoveryServiceBlockingStub configurationDiscoveryServiceBlockingStub;
 
@@ -72,6 +72,7 @@ public class ConfigurationDiscoveryService implements BootService, GRPCChannelLi
 
     @Override
     public void statusChanged(final GRPCChannelStatus status) {
+        // 当网络连接成功后, 创建当前 service (和前面所有的 GPRCChannelListener 类似)
         if (GRPCChannelStatus.CONNECTED.equals(status)) {
             Channel channel = ServiceManager.INSTANCE.findService(GRPCChannelManager.class).getChannel();
             configurationDiscoveryServiceBlockingStub = ConfigurationDiscoveryServiceGrpc.newBlockingStub(channel);
@@ -83,6 +84,7 @@ public class ConfigurationDiscoveryService implements BootService, GRPCChannelLi
 
     @Override
     public void prepare() throws Throwable {
+        // 将自身注册为 GRPC 网络连接的监听器
         ServiceManager.INSTANCE.findService(GRPCChannelManager.class).addChannelListener(this);
     }
 
@@ -92,7 +94,7 @@ public class ConfigurationDiscoveryService implements BootService, GRPCChannelLi
             new DefaultNamedThreadFactory("ConfigurationDiscoveryService")
         ).scheduleAtFixedRate(
             new RunnableWithExceptionProtection(
-                this::getAgentDynamicConfig,
+                this::getAgentDynamicConfig, // 调度执行的任务
                 t -> LOGGER.error("Sync config from OAP error.", t)
             ),
             Config.Collector.GET_AGENT_DYNAMIC_CONFIG_INTERVAL,
@@ -200,19 +202,23 @@ public class ConfigurationDiscoveryService implements BootService, GRPCChannelLi
 
     /**
      * get agent dynamic config through gRPC.
+     * 定期调度. 每调度一次, 就向服务端要一次 agent 的配置信息
      */
     private void getAgentDynamicConfig() {
         LOGGER.debug("ConfigurationDiscoveryService running, status:{}.", status);
 
+        // 判断网络是否是连接状态的, 否则不做任何操作
         if (GRPCChannelStatus.CONNECTED.equals(status)) {
             try {
                 ConfigurationSyncRequest.Builder builder = ConfigurationSyncRequest.newBuilder();
-                builder.setService(Config.Agent.SERVICE_NAME);
+                builder.setService(Config.Agent.SERVICE_NAME); // 从配置文件中获取 serviceName 放入 Request 中
 
                 // Some plugin will register watcher later.
-                final int size = register.keys().size();
-                if (lastRegisterWatcherSize != size) {
+                // 有些插件注册监听的时候会比较慢
+                final int size = register.keys().size(); // 当前所有的 watcher
+                if (lastRegisterWatcherSize != size) { // 如果上一次计算的 watcher 的数量和这一次计算的 watcher 的数量不相等 (代表有新的配置 key 注册进来)
                     // reset uuid, avoid the same uuid causing the configuration not to be updated.
+                    // 重置 uuid, 避免同样的 uuid 导致配置没有被更新
                     uuid = null;
                     lastRegisterWatcherSize = size;
                 }
@@ -221,10 +227,10 @@ public class ConfigurationDiscoveryService implements BootService, GRPCChannelLi
                     builder.setUuid(uuid);
                 }
 
-                if (configurationDiscoveryServiceBlockingStub != null) {
+                if (configurationDiscoveryServiceBlockingStub != null) { // service 创建成功后
                     final Commands commands = configurationDiscoveryServiceBlockingStub.withDeadlineAfter(
                         GRPC_UPSTREAM_TIMEOUT, TimeUnit.SECONDS
-                    ).fetchConfigurations(builder.build());
+                    ).fetchConfigurations(builder.build()); // 通过 grpc 方法获取 commands
                     ServiceManager.INSTANCE.findService(CommandService.class).receiveCommand(commands);
                 }
             } catch (Throwable t) {
@@ -238,6 +244,8 @@ public class ConfigurationDiscoveryService implements BootService, GRPCChannelLi
      * Local dynamic configuration center.
      */
     public static class Register {
+
+        // WatcherHolder
         private final Map<String, WatcherHolder> register = new HashMap<>();
 
         private boolean containsKey(String key) {
@@ -272,7 +280,10 @@ public class ConfigurationDiscoveryService implements BootService, GRPCChannelLi
 
     @Getter
     private static class WatcherHolder {
+
+        // 监听 agent 配置项值变化的监听器
         private final AgentConfigChangeWatcher watcher;
+        // agent 配置项的 key
         private final String key;
 
         public WatcherHolder(AgentConfigChangeWatcher watcher) {

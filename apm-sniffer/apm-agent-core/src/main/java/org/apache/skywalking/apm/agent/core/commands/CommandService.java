@@ -126,6 +126,7 @@ public class CommandService implements BootService, Runnable {
                     continue;
                 }
 
+                // 将命令放入队列中
                 boolean success = this.commands.offer(baseCommand);
 
                 if (!success && LOGGER.isWarnEnable()) {

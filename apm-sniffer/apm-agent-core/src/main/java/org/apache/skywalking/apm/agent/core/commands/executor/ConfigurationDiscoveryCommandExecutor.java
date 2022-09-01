@@ -34,10 +34,11 @@ public class ConfigurationDiscoveryCommandExecutor implements CommandExecutor {
     @Override
     public void execute(BaseCommand command) throws CommandExecutionException {
         try {
+            // 命令转型
             ConfigurationDiscoveryCommand agentDynamicConfigurationCommand = (ConfigurationDiscoveryCommand) command;
 
-            ServiceManager.INSTANCE.findService(ConfigurationDiscoveryService.class)
-                                   .handleConfigurationDiscoveryCommand(agentDynamicConfigurationCommand);
+            ServiceManager.INSTANCE.findService(ConfigurationDiscoveryService.class) // 查找真正要执行命令的服务
+                                   .handleConfigurationDiscoveryCommand(agentDynamicConfigurationCommand); // 用真正执行命令的服务执行命令
         } catch (Exception e) {
             LOGGER.error(e, "Handle ConfigurationDiscoveryCommand error, command:{}", command.toString());
         }

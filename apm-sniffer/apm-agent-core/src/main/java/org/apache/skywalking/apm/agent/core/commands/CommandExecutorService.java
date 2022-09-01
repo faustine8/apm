@@ -19,6 +19,7 @@ package org.apache.skywalking.apm.agent.core.commands;
 
 import java.util.HashMap;
 import java.util.Map;
+
 import org.apache.skywalking.apm.agent.core.boot.BootService;
 import org.apache.skywalking.apm.agent.core.boot.DefaultImplementor;
 import org.apache.skywalking.apm.agent.core.commands.executor.ConfigurationDiscoveryCommandExecutor;
@@ -37,6 +38,7 @@ import org.apache.skywalking.apm.network.trace.component.command.ProfileTaskComm
  */
 @DefaultImplementor
 public class CommandExecutorService implements BootService, CommandExecutor {
+    // 命令和对应的执行器
     private Map<String, CommandExecutor> commandExecutorMap;
 
     @Override
@@ -44,9 +46,11 @@ public class CommandExecutorService implements BootService, CommandExecutor {
         commandExecutorMap = new HashMap<String, CommandExecutor>();
 
         // Profile task executor
+        // 性能分析命令执行器
         commandExecutorMap.put(ProfileTaskCommand.NAME, new ProfileTaskCommandExecutor());
 
         //Get ConfigurationDiscoveryCommand executor.
+        // 配置发现命令执行器
         commandExecutorMap.put(ConfigurationDiscoveryCommand.NAME, new ConfigurationDiscoveryCommandExecutor());
     }
 
@@ -70,7 +74,11 @@ public class CommandExecutorService implements BootService, CommandExecutor {
         executorForCommand(command).execute(command);
     }
 
+    /**
+     * 根据命令查找对应的执行器. 如果没有就返回一个空的命令执行器(这个执行器什么都不做)
+     */
     private CommandExecutor executorForCommand(final BaseCommand command) {
+        // 根据命令查找对应的执行器
         final CommandExecutor executor = commandExecutorMap.get(command.getCommand());
         if (executor != null) {
             return executor;
